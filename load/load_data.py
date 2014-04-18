@@ -81,9 +81,10 @@ def read_bunch_data(file_list, format='ascii'):
                 R.append((i, file_list[i]))
     else:
         raise(ValueError('*** Unknown format: ', format))
-            
-    # for r in R:
-    #     file_list.remove(r[1])
+
+    for r in R:
+        file_list.remove(r[1])
+        A = plt.delete(A, r[0], axis=0)
 
     A = plt.array(A)
     A = plt.rollaxis(A, 0, 3)
