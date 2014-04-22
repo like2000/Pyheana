@@ -5,7 +5,7 @@ import PySussix
 import matplotlib
 import pylab as plt
 import scipy.io as sio
-from mpi4py import MPI
+#~ from mpi4py import MPI
 from Pyheana.load.fit_data import *
 from Pyheana.load.load_data import *
 from scipy.stats import gaussian_kde, norm
@@ -80,7 +80,7 @@ def fft_spectrogram(signals=None, axis=None, tunes=None, scan_values=None):
 
 #     return tunes
 
-def get_spectrum(x, xp, Qx, comm):
+def get_spectrum(x, xp, Qx):
 
     # Initialise Sussix object
     SX = PySussix.Sussix()
@@ -115,44 +115,45 @@ def plot_footprint(x, xp, Qx, y, yp, Qy):
 
     plt.scatter(tunes_x, tunes_y)
 
-def plot_spectrum(x, xp, Qx, comm):
+def plot_spectrum(x, xp, Qx):
     
-    if comm.rank == 0:
-        fig, (ax1) = plt.subplots(1, figsize=(11,8), sharex=True)
+    #~ if comm.rank == 0:
+    fig, (ax1) = plt.subplots(1, figsize=(11,8), sharex=True)
 
-    tunes = get_spectrum(x, xp, Qx, comm)
+    tunes = get_spectrum(x, xp, Qx)
+    #~ tunes = get_spectrum(x, xp, Qx, comm)
+    
+    #~ if comm.rank == 0:
+    tunes *= 1 / Qx
 
-    if comm.rank == 0:
-        tunes *= 1 / Qx
+    # Floquet transformation
+    beta = plt.amax(x) / plt.amax(xp)
+    xp *= beta
 
-        # Floquet transformation
-        beta = plt.amax(x) / plt.amax(xp)
-        xp *= beta
+    # Action
+    x0, xp0 = x[:,0], xp[:,0]
 
-        # Action
-        x0, xp0 = x[:,0], xp[:,0]
+    r2 = x0 ** 2 + xp0 ** 2
+    r2 *= 1 / plt.amax(r2)
+    sigma_x = plt.std(x0)
 
-        r2 = x0 ** 2 + xp0 ** 2
-        r2 *= 1 / plt.amax(r2)
-        sigma_x = plt.std(x0)
+    # Plot
+    sc = ax1.scatter(x0, tunes, c=r2, marker='x')
+    ax1.set_xlim(-0.3, 0.3)
+    ax1.set_ylim(0, 1.5)
+    ax1.set_xlabel('dz position along bunch [m]')
+    ax1.set_ylabel(r'$Q_s / Q_{s0}$', fontsize=24)
 
-        # Plot
-        sc = ax1.scatter(x0, tunes, c=r2, marker='x')
-        ax1.set_xlim(-0.3, 0.3)
-        ax1.set_ylim(0, 1.5)
-        ax1.set_xlabel('dz position along bunch [m]')
-        ax1.set_ylabel(r'$Q_s / Q_{s0}$', fontsize=24)
+    cb = plt.colorbar(sc)
+    cb.set_label(r'$J / J_{\rm{max}}$', fontsize=24)
 
-        cb = plt.colorbar(sc)
-        cb.set_label(r'$J / J_{\rm{max}}$', fontsize=24)
+    plt.tight_layout()
 
-        plt.tight_layout()
-
-        # ax1.hist(tunes, 100)
-        # ax1.set_xlim(plt.amin(tunes), plt.amax(tunes))
-        # # Histograms
-        # smoothed_histogram(ax2, tunes, xaxis='x')
-        # ax2.ticklabel_format(useOffset=False)
+    # ax1.hist(tunes, 100)
+    # ax1.set_xlim(plt.amin(tunes), plt.amax(tunes))
+    # # Histograms
+    # smoothed_histogram(ax2, tunes, xaxis='x')
+    # ax2.ticklabel_format(useOffset=False)
 
 def hamiltonian(dz, dp):
 

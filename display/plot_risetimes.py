@@ -22,7 +22,8 @@ def plot_risetimes(a, b, **kwargs):
     r = []
     for i in xrange(n_files):
         x, y = a[:,i], b[:,i]
-        xo, yo = get_envelope(x, y)
+        # xo, yo = get_envelope(x, y)
+        xo, yo = x, y
         p = plt.polyfit(xo, np.log(yo), 1)
 
         # Right way to fit... a la Nicolas - the fit expert!
@@ -34,18 +35,18 @@ def plot_risetimes(a, b, **kwargs):
         l = ax2.plot(x, y)
         lcolor = l[-1].get_color()
         ax2.plot(xo, yo, 'o', color=lcolor)
-        xi = plt.linspace(plt.amin(x), plt.amax(x))
-        yi = plt.exp(p[1] + p[0] * xi)
-        ax2.plot(xi, yi, color=lcolor, ls='--', lw=3)
+        # xi = plt.linspace(plt.amin(x), plt.amax(x))
+        # yi = plt.exp(p[1] + p[0] * xi)
+        # ax2.plot(xi, yi, color=lcolor, ls='--', lw=3)
 
         print p[1], p[0], 1 / p[0]
 
         r.append(p[0])
 
-    ax2.set_ylim(-10, 10)
+    ax2.set_ylim(0, 1000)
     plt.figure(2)
     # plt.semilogy(plt.absolute(r), lw=3, c='purple')
-    plt.plot(plt.absolute(r), lw=3, c='purple')
+    plt.plot(r, lw=3, c='purple')
     # plt.gca().set_ylim(0, 10000)
 
     # ax3 = plt.subplot(111)
