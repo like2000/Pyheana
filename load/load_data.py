@@ -1,14 +1,16 @@
-import h5py, natsort, os, sys
+import glob, h5py, natsort, sys
 import scipy.io as sio
 import pylab as plt
 
 
-def get_file_list(path, extension=None):
+def get_file_list(path, substring=None):
 
-    file_list = os.listdir(path)
-    file_list = [path + '/' + f for f in file_list if f.split('.')[-1] == extension]
-    # file_list = sorted(file_list)
-    file_list = natsort.natsorted(file_list, number_type=int, signed=False)
+    file_list = glob.glob(path + '/' + substring)
+    file_list = sorted(list(file_list))
+
+    # file_list = os.listdir(path)
+    # file_list = [path + '/' + f for f in file_list if f.split('.')[-1] == extension]
+    # file_list = natsort.natsorted(file_list, number_type=int, signed=False)
 
     print '--> Found files'
     for i, f in enumerate(file_list):
@@ -104,11 +106,25 @@ def read_slice_data(filename, format='ascii'):
 
 def read_particle_data(filename, format='ascii'):
 
+    A = {}
+
     print "--> Reading data from file", filename
-    # if format == 'ascii':
-    A, filename = read_big_data(filename, type='prb', format=format)
-    # elif format == 'hdf5':
-        # pass
+    if format == ('ascii' or 'hdf5'):
+        A, filename = read_big_data(filename, type='prb', format=format)
+    elif format == 'h5':
+        hf = h5py.File(filename, 'r')
+        keys = hf.keys()
+        a = hf[keys[0]]
+        A['x'] = hf['x'][:]
+        A['xp'] = hf['xp'][:]
+        A['y'] = hf['y'][:]
+        A['yp'] = hf['yp'][:]
+        A['dz'] = hf['dz'][:]
+        A['dp'] = hf['dp'][:]
+        A['id'] = hf['id'][:]
+        A['c'] = hf['c'][:]
+    else:
+        raise(ValueError('*** Unknown format: ', format))
 
     return A
 
@@ -118,8 +134,6 @@ def read_big_data(filename, type=None, format='ascii'):
         data = filename.replace('.cfg', '_' + type + '.dat')
     elif format == 'hdf5':
         data = filename.replace('.cfg', '.' + type + '.h5')
-    else:
-        raise(ValueError('*** Unknown format: ', format))
 
     try:
         A = plt.np.load(data.replace('.dat', '.npy'))

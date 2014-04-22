@@ -44,6 +44,42 @@ def fft_spectrogram(signals=None, axis=None, tunes=None, scan_values=None):
         #~oyfft = (tfft-tuneyfft)/self.Qs[j]
         #oyfft = tfft
 
+# def get_spectrum(x, xp, Qx, comm):
+
+#     # Initialise Sussix object
+#     SX = PySussix.Sussix()
+
+#     x, xp = x.T, xp.T # (turns, particles)
+#     n_turns, n_particles = x.shape
+
+#     # Floquet transformation
+#     beta = plt.amax(x) / plt.amax(xp)
+#     xp *= beta
+
+#     if comm.rank == 0:
+#         SX.sussix_inp(nt1=1, nt2=n_turns, idam=1, ir=0, tunex=Qx % 1, tuney=Qx % 1)
+#     comm.Barrier()
+
+#     n_subparticles = n_particles / comm.size
+#     n_remain = n_particles % n_subparticles
+#     tmptunes = plt.zeros(n_subparticles)
+
+#     for i in xrange(n_particles):
+#         if (n_subparticles * comm.rank < i < n_subparticles * (comm.rank + 1)):
+#             SX.sussix(x[:,i], xp[:,i], x[:,i], xp[:,i], x[:,i], xp[:,i])
+#             tmptunes[i - n_subparticles * comm.rank] = plt.absolute(SX.ox[plt.argmax(SX.ax)])
+
+#     # if comm.rank == 0:
+#     #     tunes = plt.zeros(n_particles)
+
+#     tunes = np.array(comm.gather(tmptunes, root=0)).flatten()
+
+#     if comm.rank == 0:
+#         print tunes.shape
+#         #sys.exit()
+
+#     return tunes
+
 def get_spectrum(x, xp, Qx, comm):
 
     # Initialise Sussix object
@@ -56,27 +92,19 @@ def get_spectrum(x, xp, Qx, comm):
     beta = plt.amax(x) / plt.amax(xp)
     xp *= beta
 
-    if comm.rank == 0:
-        SX.sussix_inp(nt1=1, nt2=n_turns, idam=1, ir=0, tunex=Qx % 1, tuney=Qx % 1)
-    comm.Barrier()
+    SX.sussix_inp(nt1=1, nt2=n_turns, idam=1, ir=0, tunex=Qx % 1, tuney=Qx % 1)
 
-    n_subparticles = n_particles / comm.size
-    n_remain = n_particles % n_subparticles
-    tmptunes = plt.zeros(n_subparticles)
+    # n_subparticles = n_particles / comm.size
+    # n_remain = n_particles % n_subparticles
+    # tmptunes = plt.zeros(n_subparticles)
 
+    tunes = plt.zeros(n_particles)
     for i in xrange(n_particles):
-        if (n_subparticles * comm.rank < i < n_subparticles * (comm.rank + 1)):
-            SX.sussix(x[:,i], xp[:,i], x[:,i], xp[:,i], x[:,i], xp[:,i])
-            tmptunes[i - n_subparticles * comm.rank] = plt.absolute(SX.ox[plt.argmax(SX.ax)])
+        SX.sussix(x[:,i], xp[:,i], x[:,i], xp[:,i], x[:,i], xp[:,i])
+        tunes[i] = plt.absolute(SX.ox[plt.argmax(SX.ax)])
 
-    # if comm.rank == 0:
-    #     tunes = plt.zeros(n_particles)
-
-    tunes = np.array(comm.gather(tmptunes, root=0)).flatten()
-
-    if comm.rank == 0:
-        print tunes.shape
-        #sys.exit()
+    print tunes.shape
+    #sys.exit()
 
     return tunes
 

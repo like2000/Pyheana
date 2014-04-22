@@ -38,13 +38,14 @@ def plot_risetimes(a, b, **kwargs):
         yi = plt.exp(p[1] + p[0] * xi)
         ax2.plot(xi, yi, color=lcolor, ls='--', lw=3)
 
-        print p[1], 1 / p[0]
+        print p[1], p[0], 1 / p[0]
 
-        r.append(1 / p[0])
+        r.append(p[0])
 
     ax2.set_ylim(-10, 10)
     plt.figure(2)
-    plt.semilogy(plt.absolute(r), lw=3, c='purple')
+    # plt.semilogy(plt.absolute(r), lw=3, c='purple')
+    plt.plot(plt.absolute(r), lw=3, c='purple')
     # plt.gca().set_ylim(0, 10000)
 
     # ax3 = plt.subplot(111)
