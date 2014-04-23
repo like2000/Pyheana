@@ -87,10 +87,11 @@ def get_spectrum(x, xp, Qx):
 
     x, xp = x.T, xp.T # (turns, particles)
     n_turns, n_particles = x.shape
+    print x.shape
 
     # Floquet transformation
-    beta = plt.amax(x) / plt.amax(xp)
-    xp *= beta
+    # beta = plt.amax(x) / plt.amax(xp)
+    # xp *= beta
 
     SX.sussix_inp(nt1=1, nt2=n_turns, idam=1, ir=0, tunex=Qx % 1, tuney=Qx % 1)
 
@@ -100,6 +101,7 @@ def get_spectrum(x, xp, Qx):
 
     tunes = plt.zeros(n_particles)
     for i in xrange(n_particles):
+        print 'Run sussix... particle',i 
         SX.sussix(x[:,i], xp[:,i], x[:,i], xp[:,i], x[:,i], xp[:,i])
         tunes[i] = plt.absolute(SX.ox[plt.argmax(SX.ax)])
 
