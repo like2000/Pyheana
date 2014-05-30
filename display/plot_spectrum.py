@@ -3,6 +3,7 @@ from __future__ import division
 
 import PySussix
 import matplotlib
+import matplotlib.gridspec as gridspec
 import pylab as plt
 import scipy.io as sio
 #~ from mpi4py import MPI
@@ -80,6 +81,7 @@ def fft_spectrogram(signals=None, axis=None, tunes=None, scan_values=None):
 
 #     return tunes
 
+
 def get_spectrum(x, xp, Qx):
 
     # Initialise Sussix object
@@ -87,7 +89,6 @@ def get_spectrum(x, xp, Qx):
 
     x, xp = x.T, xp.T # (turns, particles)
     n_turns, n_particles = x.shape
-    print x.shape
 
     # Floquet transformation
     # beta = plt.amax(x) / plt.amax(xp)
@@ -110,12 +111,87 @@ def get_spectrum(x, xp, Qx):
 
     return tunes
 
-def plot_footprint(x, xp, Qx, y, yp, Qy):
+# Calc. transverse action. Note that input parameters xp, yp have been scaled by beta_x, beta_y resp.
+# x, y, xp, yp have coordinates (particle, turn). Use turn -1 for calc. of transverse action.
+def get_transverseAction(x, xp, y, yp):
+    J_x  = x[:,-1]**2 + xp[:,-1]**2
+    J_y  = y[:,-1]**2 + yp[:,-1]**2
+    J_xy = J_x + J_y
+
+    return J_xy
+
+# Calc. longitudinal action. Input parameters has been scaled by beta_z = R/Qs (R: radius of the machine)
+def get_longitudinalAction(z, dp):
+    J_z = z[:,-1]**2 + dp[:,-1]**2
+
+    return J_z
+
+def plot_footprint(x, xp, Qx, y, yp, Qy, J):
 
     tunes_x = get_spectrum(x, xp, Qx)
     tunes_y = get_spectrum(y, yp, Qy)
 
-    plt.scatter(tunes_x, tunes_y)
+    # J_xy    = get_transverseAction(x, xp, y, yp)
+
+    # PLOT TUNES FOOTPRINT, WITH PROJECTIONS ON qx AND qy AXES RESPECTIVELY.
+    plt.figure(figsize=(12,10))
+
+    # Define grid for three subplots.
+    gs = gridspec.GridSpec(2, 2, width_ratios=[3,1], height_ratios=[1, 3])
+    ax1 = plt.subplot(gs[2])
+    ax2 = plt.subplot(gs[0], sharex=ax1)
+    ax3 = plt.subplot(gs[3], sharey=ax1)
+
+    xmin, xmax = plt.amin(tunes_x), plt.amax(tunes_x)
+    ymin, ymax = plt.amin(tunes_y), plt.amax(tunes_y)
+    xmin      -= 0.03
+    xmax      += 0.03
+    ymin      -= 0.03
+    ymax      += 0.03
+    
+    # Scatterplot
+    ax1.set_xlim(xmin, xmax)
+    ax1.set_ylim(ymin, ymax)
+    ax1.set_xlabel('qx', fontsize=18)
+    ax1.set_ylabel('qy', fontsize=18)
+
+    ax1.scatter(tunes_x, tunes_y, c=J, marker='o', lw=0, norm=matplotlib.colors.LogNorm())
+
+    # Histograms
+    smoothed_histogram(ax2, tunes_x[:].flatten(), xaxis='x')
+    smoothed_histogram(ax3, tunes_y[:].flatten(), xaxis='y')
+
+    for l in ax2.get_xticklabels() + ax3.get_yticklabels():
+        l.set_visible(False)
+    for l in ax1.get_xticklabels() + ax3.get_xticklabels():
+        l.set_rotation(45)
+
+    plt.tight_layout()
+
+    # # from mayavi.modules.grid_plane import GridPlane
+    # # from mayavi.modules.outline import Outline
+    # # from mayavi.modules.volume import Volume
+    # # from mayavi.scripts import mayavi2
+    # from mayavi import mlab
+    # mlab.options.backend = 'envisage'
+    # # # graphics card driver problem
+    # # # workaround by casting int in line 246 of enthought/mayavi/tools/figure.py
+    # # #mlab.options.offscreen = True
+    # # #enthought.mayavi.engine.current_scene.scene.off_screen_rendering = True
+
+    # mlab.figure(bgcolor=(0.9,0.9,0.9), fgcolor=(0.2,0.2,0.2))
+    # aspect = (0, 10, 0, 16, -6, 6)
+    # s = mlab.points3d(x[:,0], y[:,0], z[:,0], r, colormap='jet', resolution=6,
+    #                   scale_factor=1e-3, scale_mode='none')
+    # mlab.outline(line_width=1)
+    # for i in range(n_turns):
+    #     print i
+    #     s.mlab_source.set(x=x[:,i], y=y[:,i], z=z[:,i])
+
+    # plt.show()
+    
+    return ax1
+
 
 def plot_spectrum(x, xp, Qx):
     

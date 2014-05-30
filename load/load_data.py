@@ -111,7 +111,6 @@ def read_particle_data(filename, format='ascii'):
         A, filename = read_big_data(filename, type='prb', format=format)
     elif format == 'h5':
         hf = h5py.File(filename, 'r')
-<<<<<<< variant A
 
         # Check whether h5 file has structure with 'Step#..' keys. 
         if 'Step#0' in hf.keys():
