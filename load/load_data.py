@@ -1,16 +1,13 @@
 import glob, h5py, natsort, sys
 import scipy.io as sio
 import pylab as plt
+import numpy as np
 
 
 def get_file_list(path, substring=None):
 
     file_list = glob.glob(path + '/' + substring)
     file_list = sorted(list(file_list))
-
-    # file_list = os.listdir(path)
-    # file_list = [path + '/' + f for f in file_list if f.split('.')[-1] == extension]
-    # file_list = natsort.natsorted(file_list, number_type=int, signed=False)
 
     print '--> Found files'
     for i, f in enumerate(file_list):
@@ -104,6 +101,7 @@ def read_slice_data(filename, format='ascii'):
 
     return A
 
+
 def read_particle_data(filename, format='ascii'):
 
     A = {}
@@ -113,20 +111,64 @@ def read_particle_data(filename, format='ascii'):
         A, filename = read_big_data(filename, type='prb', format=format)
     elif format == 'h5':
         hf = h5py.File(filename, 'r')
-        keys = hf.keys()
-        a = hf[keys[0]]
-        A['x'] = hf['x'][:]
-        A['xp'] = hf['xp'][:]
-        A['y'] = hf['y'][:]
-        A['yp'] = hf['yp'][:]
-        A['z'] = hf['z'][:]
-        A['dp'] = hf['dp'][:]
-        A['id'] = hf['id'][:]
-        A['c'] = hf['c'][:]
+<<<<<<< variant A
+
+        # Check whether h5 file has structure with 'Step#..' keys. 
+        if 'Step#0' in hf.keys():
+            # Preallocate memory.
+            n_steps          = len(hf.keys())
+            n_macroparticles = len((hf[hf.keys()[0]])['x'])
+
+            x   = np.zeros((n_macroparticles, n_steps))
+            xp  = np.zeros((n_macroparticles, n_steps))
+            y   =  np.zeros((n_macroparticles, n_steps))
+            yp  = np.zeros((n_macroparticles, n_steps))
+            z   = np.zeros((n_macroparticles, n_steps))
+            dp  = np.zeros((n_macroparticles, n_steps))
+            c   = np.zeros((n_macroparticles, n_steps))
+            idd = np.zeros((n_macroparticles, n_steps))
+
+            # Read data from h5 file.
+            for i in range(0, n_steps):
+                step = hf['Step#' + str(i)]
+
+                x[:,i]   = step['x'][:]
+                xp[:,i]  = step['xp'][:]
+                y[:,i]   = step['y'][:]
+                yp[:,i]  = step['yp'][:]
+                z[:,i]   = step['z'][:]
+                dp[:,i]  = step['dp'][:]
+                c[:,i]   = step['c'][:]
+                idd[:,i] = step['id'][:]
+
+            # Build dictionary
+            A['x']  = x
+            A['xp'] = xp
+            A['y']  = y
+            A['yp'] = yp
+            A['z']  = z
+            A['dp'] = dp
+            A['c']  = c
+            A['id'] = idd
+
+        # No 'Step#..' structure.
+        else:
+            keys = hf.keys()
+            a = hf[keys[0]]
+            A['x']  = hf['x'][:]
+            A['xp'] = hf['xp'][:]
+            A['y']  = hf['y'][:]
+            A['yp'] = hf['yp'][:]
+            A['z']  = hf['z'][:]
+            A['dp'] = hf['dp'][:]
+            A['id'] = hf['id'][:]
+            A['c']  = hf['c'][:]
+
     else:
         raise(ValueError('*** Unknown format: ', format))
 
     return A
+
 
 def read_big_data(filename, type=None, format='ascii'):
 
