@@ -95,7 +95,7 @@ def plot_tuneshift(data, file_list, beta_x=None, beta_y=None, Qx=None, Qy=None, 
     sx = plt.zeros((window_width, n_files), dtype='complex')
     sy = plt.zeros((window_width, n_files), dtype='complex')
     for i in range(n_files):
-        t, x, xp, y, yp, dz, dp = A[:7,:,i]
+        t, x, xp, y, yp, z, dp = A[:7,:,i]
 
         # Floquet transformation
         xp *= beta_x[i]

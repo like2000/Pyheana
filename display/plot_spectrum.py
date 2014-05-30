@@ -143,7 +143,7 @@ def plot_spectrum(x, xp, Qx):
     sc = ax1.scatter(x0, tunes, c=r2, marker='x')
     ax1.set_xlim(-0.3, 0.3)
     ax1.set_ylim(0, 1.5)
-    ax1.set_xlabel('dz position along bunch [m]')
+    ax1.set_xlabel('z position along bunch [m]')
     ax1.set_ylabel(r'$Q_s / Q_{s0}$', fontsize=24)
 
     cb = plt.colorbar(sc)
@@ -157,7 +157,7 @@ def plot_spectrum(x, xp, Qx):
     # smoothed_histogram(ax2, tunes, xaxis='x')
     # ax2.ticklabel_format(useOffset=False)
 
-def hamiltonian(dz, dp):
+def hamiltonian(z, dp):
 
     pass
 
