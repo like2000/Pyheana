@@ -1,0 +1,12 @@
+*.inp
+*.html
+*.o
+*.so
+*.c
+*.pyc
+build/
+scripts/
+*~
+.#*
+#*
+*.mpg
