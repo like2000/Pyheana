@@ -16,7 +16,7 @@ from Pyheana.load.load_data import *
 
 
 
-def plot_thresholds(x, y, z):
+def plot_thresholds(x, y, z, scan_parameter='intensity'):
 
     vmax = 10
 
@@ -44,8 +44,10 @@ def plot_thresholds(x, y, z):
     xx, yy = plt.meshgrid(x[:,0], z)
     ct = ax.contourf(xx, yy, y.T, levels=plt.linspace(0, vmax, 201), vmin=0, vmax=vmax, cmap=cmap)
     ax.set_xlabel('Turns')
-    ax.set_ylabel('Intensity [1e11 ppb]')
+    ax.set_ylabel(scan_parameter)
+    # ax.set_ylim(0, 6.2e11)
     cb = plt.colorbar(ct)
-    cb.set_label('Horizontal norm. emittance [$\mu$m]')
+    # cb.set_label('Horizontal norm. emittance [$\mu$m]')
+    cb.set_label('Vertical norm. emittance [$\mu$m]')
     plt.tight_layout()
 

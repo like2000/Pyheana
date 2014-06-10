@@ -5,14 +5,15 @@ import scipy.io as sio
 from Pyheana.load.load_data import *
 
 
-def axes_setup(scan_parameter, plane='x'):
+def axes_setup(scan_parameter, plane='y'):
 
     # xlimits = (0, 7e11)
     # ylimits = (-8, 8)
     # xlimits = (0, 3e12)
     # ylimits = (-2, 8)
-    xlimits = (0, 5e11)
-    ylimits = (-6, 3)
+    #xlimits = (0, 6.2e11)
+    xlimits = (0, 1000)
+    ylimits = (-3, 2)
     xlabel = scan_parameter
 
     # fig1, (ax11, ax12) = plt.subplots(2, sharex=True, sharey=True)
@@ -143,10 +144,10 @@ def plot_spectrogram(ox, ax, oy, ay, scan_parameter=None, scan_values=None):
     xx = plt.ones(ox.shape) * plt.array(scan_values, dtype='float64')
     n_lines, n_files = xx.shape
     for i in xrange(n_files):
-        x, y, z = xx[:,i], ox[:,i], ax[:,i]
+        # x, y, z = xx[:,i], ox[:,i], ax[:,i]
+        # sc1 = ax1.scatter(x, y, s=192*plt.log(1+z), c=z, cmap=palette, edgecolors='None')
+        x, y, z = xx[:,i], oy[:,i], ay[:,i]
         sc1 = ax1.scatter(x, y, s=192*plt.log(1+z), c=z, cmap=palette, edgecolors='None')
-        # x, y, z = xx[:,i], oy[:,i], ay[:,i]
-        # sc2 = ax2.scatter(x, y, s=192*plt.log(1+z), c=z, cmap=palette, edgecolors='None')
 
     # Colorbar
     cb = plt.colorbar(sc1, ax3, orientation='vertical')
