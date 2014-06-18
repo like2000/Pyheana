@@ -102,7 +102,7 @@ def read_slice_data(filename, format='ascii'):
     return A
 
 
-def read_particle_data(filename, format='ascii'):
+def read_particle_data(filename, format='ascii', n_steps_to_read=None, n_macroparticles_to_read=None):
 
     A = {}
 
@@ -115,30 +115,32 @@ def read_particle_data(filename, format='ascii'):
         # Check whether h5 file has structure with 'Step#..' keys. 
         if 'Step#0' in hf.keys():
             # Preallocate memory.
-            n_steps          = len(hf.keys())
-            n_macroparticles = len((hf[hf.keys()[0]])['x'])
+            if not n_steps_to_read:
+                n_steps_to_read  = len(hf.keys())
+            if not n_macroparticles_to_read:
+                n_macroparticles_to_read = len((hf[hf.keys()[0]])['x'])
 
-            x   = np.zeros((n_macroparticles, n_steps))
-            xp  = np.zeros((n_macroparticles, n_steps))
-            y   =  np.zeros((n_macroparticles, n_steps))
-            yp  = np.zeros((n_macroparticles, n_steps))
-            z   = np.zeros((n_macroparticles, n_steps))
-            dp  = np.zeros((n_macroparticles, n_steps))
-            c   = np.zeros((n_macroparticles, n_steps))
-            idd = np.zeros((n_macroparticles, n_steps))
+            x   = np.zeros((n_macroparticles_to_read, n_steps_to_read))
+            xp  = np.zeros((n_macroparticles_to_read, n_steps_to_read))
+            y   = np.zeros((n_macroparticles_to_read, n_steps_to_read))
+            yp  = np.zeros((n_macroparticles_to_read, n_steps_to_read))
+            z   = np.zeros((n_macroparticles_to_read, n_steps_to_read))
+            dp  = np.zeros((n_macroparticles_to_read, n_steps_to_read))
+            c   = np.zeros((n_macroparticles_to_read, n_steps_to_read))
+            idd = np.zeros((n_macroparticles_to_read, n_steps_to_read))
 
             # Read data from h5 file.
-            for i in range(0, n_steps):
+            for i in range(0, n_steps_to_read):
                 step = hf['Step#' + str(i)]
 
-                x[:,i]   = step['x'][:]
-                xp[:,i]  = step['xp'][:]
-                y[:,i]   = step['y'][:]
-                yp[:,i]  = step['yp'][:]
-                z[:,i]   = step['z'][:]
-                dp[:,i]  = step['dp'][:]
-                c[:,i]   = step['c'][:]
-                idd[:,i] = step['id'][:]
+                x[:,i]   = step['x'][:n_macroparticles_to_read]
+                xp[:,i]  = step['xp'][:n_macroparticles_to_read]
+                y[:,i]   = step['y'][:n_macroparticles_to_read]
+                yp[:,i]  = step['yp'][:n_macroparticles_to_read]
+                z[:,i]   = step['z'][:n_macroparticles_to_read]
+                dp[:,i]  = step['dp'][:n_macroparticles_to_read]
+                c[:,i]   = step['c'][:n_macroparticles_to_read]
+                idd[:,i] = step['id'][:n_macroparticles_to_read]
 
             # Build dictionary
             A['x']  = x
@@ -152,6 +154,9 @@ def read_particle_data(filename, format='ascii'):
 
         # No 'Step#..' structure.
         else:
+            if n_macroparticles_to_read or n_steps_to_read:
+                print 'Reading in extract of particle data not yet implemented ...'
+
             keys = hf.keys()
             a = hf[keys[0]]
             A['x']  = hf['x'][:]
