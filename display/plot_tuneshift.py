@@ -5,244 +5,185 @@ import scipy.io as sio
 from Pyheana.load.load_data import *
 
 
-def axes_setup(scan_parameter, plane='y'):
+class TuneshiftPlots:
 
-    # xlimits = (0, 7e11)
-    # ylimits = (-8, 8)
-    # xlimits = (0, 3e12)
-    # ylimits = (-2, 8)
-    #xlimits = (0, 6.2e11)
-    xlimits = (0, 1000)
-    ylimits = (-3, 2)
-    xlabel = scan_parameter
+    def __init__(self, rawdata, scan_values, beta_x, beta_y, Q_x, Q_y, Q_s):
 
-    # fig1, (ax11, ax12) = plt.subplots(2, sharex=True, sharey=True)
-    # fig2, (ax21, ax22) = plt.subplots(2, sharex=True, sharey=True)
+        self.scan_values = scan_values
+        self.Q_x = Q_x
+        self.Q_y = Q_y
+        self.Q_s = Q_s
 
-    # majorFormatter = plt.FormatStrFormatter('%3.2e')
-    # sctfcFormatter = plt.ScalarFormatter(useOffset=False, useMathText=True)
-    # sctfcFormatter.set_scientific(True)
+        self._prepare_input_signals(rawdata, beta_x, beta_y)
 
-    # Plot environment
-    ratio = 20
-    if len(plane) == 1:
-        fig = plt.figure(figsize=(12, 8))
+        # Dictionaries to store results of different cases (horizontal, vertical) x (fft, sussix).
+        self.spectral_lines = {}
+        self.spectral_intensity = {}
+
+        
+    def calculate_fft_spectrogram(self, n_lines=1000):
+
+        # Allocate memory for output.
+        oxx, axx = plt.zeros((n_lines, self.n_files)), plt.zeros((n_lines, self.n_files))
+        oyy, ayy = plt.zeros((n_lines, self.n_files)), plt.zeros((n_lines, self.n_files))
+
+        for file_i in xrange(self.n_files):
+            t = plt.linspace(0, 1, self.n_turns)
+            ax = plt.absolute(plt.fft(self.sx[:, file_i]))
+            ay = plt.absolute(plt.fft(self.sy[:, file_i]))
+
+            # Amplitude normalisation
+            ax /= plt.amax(ax, axis=0)
+            ay /= plt.amax(ay, axis=0)
+
+            # Tunes
+            if file_i==0:
+                tunexfft = t[plt.argmax(ax[:self.n_turns/2], axis=0)]
+                tuneyfft = t[plt.argmax(ay[:self.n_turns/2], axis=0)]
+                print "\n*** Tunes from FFT"
+                print "    tunex:", tunexfft, ", tuney:", tuneyfft, "\n"
+
+            # Tune normalisation
+            ox = (t - (self.Q_x[file_i] % 1)) / self.Q_s[file_i]
+            oy = (t - (self.Q_y[file_i] % 1)) / self.Q_s[file_i]
+    
+            # Sort
+            CX = plt.rec.fromarrays([ox, ax], names='ox, ax')
+            CX.sort(order='ax')
+            CY = plt.rec.fromarrays([oy, ay], names='oy, ay')
+            CY.sort(order='ay')
+            ox, ax, oy, ay = CX.ox[-n_lines:], CX.ax[-n_lines:], CY.oy[-n_lines:], CY.ay[-n_lines:]
+            oxx[:,file_i], axx[:,file_i], oyy[:,file_i], ayy[:,file_i] = ox, ax, oy, ay
+
+        self.spectral_lines.update({ ("fft", "horizontal"): oxx, ("fft", "vertical"): oyy })
+        self.spectral_intensity.update({ ("fft", "horizontal"): axx, ("fft", "vertical"): ayy })
+
+
+    def calculate_sussix_spectrogram(self, n_lines=600):
+
+        # Initialise Sussix object.
+        SX = PySussix.Sussix()
+
+        # Allocate memory for output.        
+        oxx, axx = plt.zeros((n_lines, self.n_files)), plt.zeros((n_lines, self.n_files))
+        oyy, ayy = plt.zeros((n_lines, self.n_files)), plt.zeros((n_lines, self.n_files))
+
+        x, xp, y, yp = self.sx.real, self.sx.imag, self.sy.real, self.sy.imag
+        for file_i in xrange(self.n_files):
+            SX.sussix_inp(nt1=1, nt2=self.n_turns, idam=2, ir=0, tunex=self.Q_x[file_i] % 1, tuney=self.Q_y[file_i] % 1)
+            SX.sussix(x[:,file_i], xp[:,file_i], y[:,file_i], yp[:,file_i], self.sx[:,file_i], self.sx[:,file_i])
+
+            # Amplitude normalisation
+            SX.ax /= plt.amax(SX.ax)
+            SX.ay /= plt.amax(SX.ay)
+
+            # Tunes
+            SX.ox = plt.absolute(SX.ox)
+            SX.oy = plt.absolute(SX.oy)
+            if file_i==0:
+                tunexsx = SX.ox[plt.argmax(SX.ax)]
+                tuneysx = SX.oy[plt.argmax(SX.ay)]
+                print "\n*** Tunes from Sussix"
+                print "    tunex", tunexsx, ", tuney", tuneysx, "\n"
+
+            # Tune normalisation
+            SX.ox = (SX.ox - (self.Q_x[file_i] % 1)) / self.Q_s[file_i]
+            SX.oy = (SX.oy - (self.Q_y[file_i] % 1)) / self.Q_s[file_i]
+    
+            # Sort
+            CX = plt.rec.fromarrays([SX.ox, SX.ax], names='ox, ax')
+            CX.sort(order='ax')
+            CY = plt.rec.fromarrays([SX.oy, SX.ay], names='oy, ay')
+            CY.sort(order='ay')
+            ox, ax, oy, ay = CX.ox, CX.ax, CY.oy, CY.ay
+            oxx[:,file_i], axx[:,file_i], oyy[:,file_i], ayy[:,file_i] = ox, ax, oy, ay
+
+        self.spectral_lines.update({ ("sussix", "horizontal"): oxx, ("sussix", "vertical"): oyy })
+        self.spectral_intensity.update({ ("sussix", "horizontal"): axx, ("sussix", "vertical"): ayy })
+
+
+    def create_plot(self, plane='horizontal', analyzer='fft', xlabel='intensity [particles]', ylabel='mode number',
+                    xlimits=((0.,7.1e11)), ylimits=((-4,2))):
+
+        if not plane in ('horizontal', 'vertical'):
+            raise ValueError, 'Invalid plane argument.'
+
+        if not analyzer in ('fft', 'sussix'):
+            raise ValueError, 'Invalid analyzer argument.'
+
+        if not self.spectral_lines.has_key((analyzer,plane)):
+            raise KeyError, 'Spectrogram (' + analyzer + ',' + plane + ') must first be calculated.'
             
+        # Set up plot environment.
+        self._create_axes(xlabel, ylabel, xlimits, ylimits)
+        self._create_cropped_cmap()
+        
+        # Normalize power.
+        norm_intensity = self.spectral_intensity[(analyzer,plane)] / plt.amax(self.spectral_intensity[(analyzer,plane)])
+        spec_lines = self.spectral_lines[(analyzer,plane)]
+        
+        x_grid = plt.ones(spec_lines.shape) * plt.array(self.scan_values, dtype='float64')
+        for file_i in xrange(self.n_files):
+            x, y, z = x_grid[:,file_i], spec_lines[:,file_i], norm_intensity[:,file_i]
+            tuneshift_plot = self.ax11.scatter(x, y, s=192*plt.log(1+z), c=z, cmap=self.palette, edgecolors='None')
+
+        # Colorbar
+        cb = plt.colorbar(tuneshift_plot, self.ax13, orientation='vertical')
+        cb.set_label('Power [normalised]')
+                
+        plt.tight_layout()
+
+                
+    def _prepare_input_signals(self, rawdata, beta_x, beta_y):
+
+        n_variables, n_turns, n_files = rawdata.shape
+        
+        sx = plt.zeros((n_turns, n_files), dtype='complex')
+        sy = plt.zeros((n_turns, n_files), dtype='complex')
+
+        for file_i in range(n_files):
+            x, xp, y, yp = rawdata[1:5,:,file_i]
+
+            # Floquet transformation
+            xp *= beta_x[file_i]
+            yp *= beta_y[file_i]
+
+            # Signal
+            sx[:,file_i] = x - 1j * xp
+            sy[:,file_i] = y - 1j * yp
+
+        self.sx = sx
+        self.sy = sy
+        self.n_turns = n_turns
+        self.n_files = n_files
+
+        
+    def _create_axes(self, xlabel, ylabel, xlimits, ylimits):
+
+        # Plot environment
+        ratio = 20
+        fig = plt.figure(figsize=(22, 12))
+        
         gs = matplotlib.gridspec.GridSpec(1, ratio)
         ax11 = plt.subplot(gs[0,:ratio-1])
         ax13 = plt.subplot(gs[:,ratio-1])
 
         # Prepare plot axes
-        if plane == 'x':
-            ax11.set_ylabel('Horizontal mode number')
-        elif plane == 'y':
-            ax11.set_ylabel('Vertical mode number')
         ax11.grid(color='w')
         ax11.set_axis_bgcolor('0.35')
         ax11.set_xlabel(xlabel);
         ax11.set_xlim(xlimits)
+        ax11.set_ylabel(ylabel)
         ax11.set_ylim(ylimits)
 
-        return [ax11, ax13]
+        self.ax11 = ax11
+        self.ax13 = ax13
 
-    elif len(plane) == 2:
-        fig = plt.figure(figsize=(12, 10))
+                
+    def _create_cropped_cmap(self, n_segments = 12, cmap='hot'):
 
-        gs = matplotlib.gridspec.GridSpec(2, ratio)
-        ax11 = plt.subplot(gs[0,:ratio-1])
-        ax12 = plt.subplot(gs[1,:ratio-1])
-        ax13 = plt.subplot(gs[:,ratio-1])
+        new_cmap = plt.cm.get_cmap(cmap, n_segments)(range(n_segments))
+        new_cmap = plt.delete(new_cmap, (0, -1), 0)
+        palette = matplotlib.colors.LinearSegmentedColormap.from_list("palette", new_cmap)
 
-        # Prepare plot axes
-        ax11.set_ylabel('Horizontal mode number')
-        ax12.set_ylabel('Vertical mode number')
-        for ax in ax11, ax12:
-            ax.grid(color='w')
-            ax.set_axis_bgcolor('0.35')
-            ax.set_xlabel(xlabel);
-            ax.set_xlim(xlimits)
-            ax.set_ylim(ylimits)
-
-        return [ax11, ax12, ax13]
-
-    else:
-        raise ValueError
-
-    # fig2 = plt.figure(figsize=(12, 10))
-    # gs = matplotlib.gridspec.GridSpec(2, 4)
-    # ax21 = plt.subplot(gs[0,:3])
-    # ax22 = plt.subplot(gs[1,:3])
-    # ax23 = plt.subplot(gs[:,3])
-        
-    # ax21.set_ylabel('Horizontal mode number')
-    # ax22.set_ylabel('Vertical mode number')
-    # for ax in ax21, ax22:
-    #     ax.grid(color='w')
-    #     ax.set_axis_bgcolor('0.35')
-    #     ax.set_xlabel(xlabel);
-    #     ax.set_xlim(xlimits)
-    #     ax.set_ylim(ylimits)
-
-def plot_tuneshift(data, file_list, beta_x=None, beta_y=None, Qx=None, Qy=None, Qs=None,
-                   varray=None, scan_parameter=None):
-    
-    # Prepare data
-    A = data
-    [n_cols, n_turns, n_files]= A.shape
-
-    # Prepare signals
-    T = range(n_turns)
-    window_width = n_turns
-    sx = plt.zeros((window_width, n_files), dtype='complex')
-    sy = plt.zeros((window_width, n_files), dtype='complex')
-    for i in range(n_files):
-        t, x, xp, y, yp, z, dp = A[:7,:,i]
-
-        # Floquet transformation
-        xp *= beta_x[i]
-        yp *= beta_y[i]
-
-        # Signal
-        sx[:,i] = x[:window_width] - 1j * xp[:window_width]
-        sy[:,i] = y[:window_width] - 1j * yp[:window_width]
-
-    # FFT - Spectrogram
-    ox, ax, oy, ay  = fft_spectrum((sx, sy), tunes=(Qx, Qy, Qs))
-    plot_spectrogram(ox, ax, oy, ay, scan_parameter, varray)
-
-    # Sussix - Spectrogram
-    # ox, ax, oy, ay = sussix_spectrum((sx, sy), tunes=(Qx, Qy, Qs))
-    # plot_spectrogram(ox, ax, oy, ay, scan_parameter, varray)
-
-    #liney = ax2.axvline(6.5, c='orange', ls='--', lw=2)
-    #liney = ax2.axvline(13.5, c='orange', ls='--', lw=2)
-    #liney = ax2.axhline(1, c='g', ls='--', lw=2)
-
-    #if Input['MakeMovie']==True:
-    #for i in range(len(x)):
-        #linex = ax1.axvline(x[i], c='r', lw=2)
-        #liney = ax2.axvline(x[i], c='r', lw=2)
-        #draw()
-        #tmpname = 'Tuneshift--'+str('%03d' % (i+1))+'.'+Input['Format']
-        #savefig(tmpname)
-        #ax1.lines.remove(linex)
-        #ax2.lines.remove(liney)
-    
-    ## x-tuneshift fit
-    ##~ ix0 = abs(y[-21:]).argmin()
-    ##~ tunexmax.append(y[-21+ix0])
-    ##~ ax1.scatter(xx[:20,0], tunexmax[:20], s=100, c='r', marker='>', alpha=1)
-
-def plot_spectrogram(ox, ax, oy, ay, scan_parameter=None, scan_values=None):
-
-    palette = cropped_cmap(cmap='hot')
-    ax1, ax3 = axes_setup(scan_parameter)
-    # ax1, ax2, ax3 = axes_setup(scan_parameter, plane=('x', 'y'))
-
-    ax *= 1 / plt.amax(ax)
-    ay *= 1 / plt.amax(ay)
-    xx = plt.ones(ox.shape) * plt.array(scan_values, dtype='float64')
-    n_lines, n_files = xx.shape
-    for i in xrange(n_files):
-        # x, y, z = xx[:,i], ox[:,i], ax[:,i]
-        # sc1 = ax1.scatter(x, y, s=192*plt.log(1+z), c=z, cmap=palette, edgecolors='None')
-        x, y, z = xx[:,i], oy[:,i], ay[:,i]
-        sc1 = ax1.scatter(x, y, s=192*plt.log(1+z), c=z, cmap=palette, edgecolors='None')
-
-    # Colorbar
-    cb = plt.colorbar(sc1, ax3, orientation='vertical')
-    cb.set_label('Power [normalised]')
-
-    plt.tight_layout()
-
-def cropped_cmap(n_segments = 12, cmap='jet'):
-
-    new_cmap = plt.cm.get_cmap(cmap, n_segments)(range(n_segments))
-    new_cmap = plt.delete(new_cmap, (0, -1), 0)
-    palette = matplotlib.colors.LinearSegmentedColormap.from_list("palette", new_cmap)
-
-    return palette
-
-def fft_spectrum(signals, tunes=None, scan_values=None):
-
-    sx, sy = signals[0], signals[1]
-    Qx, Qy, Qs = tunes[0], tunes[1], tunes[2]
-
-    n_lines = 1000
-    n_turns, n_files = sx.shape
-    oxx, axx = plt.zeros((n_lines, n_files)), plt.zeros((n_lines, n_files))
-    oyy, ayy = plt.zeros((n_lines, n_files)), plt.zeros((n_lines, n_files))
-
-    for i in xrange(n_files):
-        t = plt.linspace(0, 1, n_turns)
-        ax = plt.absolute(plt.fft(sx[:,i]))
-        ay = plt.absolute(plt.fft(sy[:,i]))
-        # Amplitude normalisation
-        ax /= plt.amax(ax, axis=0)
-        ay /= plt.amax(ay, axis=0)
-        # Tunes
-        if i==0:
-            tunexfft = t[plt.argmax(ax[:n_turns/2], axis=0)]
-            tuneyfft = t[plt.argmax(ay[:n_turns/2], axis=0)]
-            print "\n*** Tunes from FFT"
-            print "    tunex:", tunexfft, ", tuney:", tuneyfft, "\n"
-        # Tune normalisation
-        ox = (t - (Qx[i] % 1)) / Qs[i]
-        oy = (t - (Qy[i] % 1)) / Qs[i]
-        #~oxfft = (tfft-tunexfft)/self.Qs[j]
-        #~oyfft = (tfft-tuneyfft)/self.Qs[j]
-        #oyfft = tfft
-
-        # Sort
-        CX = plt.rec.fromarrays([ox, ax], names='ox, ax')
-        CX.sort(order='ax')
-        CY = plt.rec.fromarrays([oy, ay], names='oy, ay')
-        CY.sort(order='ay')
-        ox, ax, oy, ay = CX.ox[-n_lines:], CX.ax[-n_lines:], CY.oy[-n_lines:], CY.ay[-n_lines:]
-        oxx[:,i], axx[:,i], oyy[:,i], ayy[:,i] = ox, ax, oy, ay
-
-    return [oxx, axx, oyy, ayy]
-
-def sussix_spectrum(signals=None, tunes=None, scan_values=None):
-
-    # Initialise Sussix object
-    SX = PySussix.Sussix()
-    
-    sx, sy = signals[0], signals[1]
-    Qx, Qy, Qs = tunes[0], tunes[1], tunes[2]
-    x, xp, y, yp = sx.real, sx.imag, sy.real, sy.imag
-    
-    n_lines = 600
-    n_turns, n_files = sx.shape
-    oxx, axx = plt.zeros((n_lines, n_files)), plt.zeros((n_lines, n_files))
-    oyy, ayy = plt.zeros((n_lines, n_files)), plt.zeros((n_lines, n_files))
-
-    for i in xrange(n_files):
-        SX.sussix_inp(nt1=1, nt2=n_turns, idam=2, ir=0, tunex=Qx[i] % 1, tuney=Qy[i] % 1)
-        SX.sussix(x[:,i], xp[:,i], y[:,i], yp[:,i], sx[:,i], sx[:,i])
-        # Amplitude normalisation
-        SX.ax /= plt.amax(SX.ax)
-        SX.ay /= plt.amax(SX.ay)
-        # Tunes
-        SX.ox = plt.absolute(SX.ox)
-        SX.oy = plt.absolute(SX.oy)
-        if i==0:
-            tunexsx = SX.ox[plt.argmax(SX.ax)]
-            tuneysx = SX.oy[plt.argmax(SX.ay)]
-            print "\n*** Tunes from Sussix"
-            print "    tunex", tunexsx, ", tuney", tuneysx, "\n"
-        # Tune normalisation
-        SX.ox = (SX.ox - (Qx[i] % 1)) / Qs[i]
-        SX.oy = (SX.oy - (Qy[i] % 1)) / Qs[i]
-        #~SX.ox = (SX.ox-tunexsx)/self.Qs[j]
-        #~SX.oy = (SX.oy-tuneysx)/self.Qs[j]
-
-        # Sort
-        CX = plt.rec.fromarrays([SX.ox, SX.ax], names='ox, ax')
-        CX.sort(order='ax')
-        CY = plt.rec.fromarrays([SX.oy, SX.ay], names='oy, ay')
-        CY.sort(order='ay')
-        ox, ax, oy, ay = CX.ox, CX.ax, CY.oy, CY.ay
-        oxx[:,i], axx[:,i], oyy[:,i], ayy[:,i] = ox, ax, oy, ay
-
-    return [oxx, axx, oyy, ayy]
+        self.palette = palette
