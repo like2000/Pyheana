@@ -23,13 +23,7 @@ class ThresholdPlots:
         cmap = plt.cm.get_cmap('jet')
 
         x, y = plt.meshgrid(self.turns[:,0], self.scan_values)
-        if plane == 'horizontal':
-            z = self.epsn_abs_x
-        elif plane == 'vertical':
-            z = self.epsn_abs_y
-        else:
-            print 'Invalid plane argument.'
-
+        z = self.epsn_abs[plane]
         threshold_plot = self.ax11.contourf(x, y, z.T, levels=plt.linspace(zlimits[0], zlimits[1], 201),
                                             vmin=zlimits[0], vmax=zlimits[1], cmap=cmap)
         cb = plt.colorbar(threshold_plot, self.ax13, orientation='vertical')
@@ -48,11 +42,8 @@ class ThresholdPlots:
         
         # z axis
         self.epsn_abs = {}
-        self.epsn_abs_x = plt.absolute(rawdata[11,:,:])
-        self.epsn_abs_y = plt.absolute(rawdata[12,:,:])
-        
-        # self.epsn_abs.update( {"horizontal", epsn_abs_x} )
-        # self.epsn_abs.update( {"vertical",   epsn_abs_y} )
+        self.epsn_abs['horizontal'] = plt.absolute(rawdata[11,:,:])
+        self.epsn_abs['vertical']   = plt.absolute(rawdata[12,:,:])
             
 
     def _create_axes(self, xlabel, ylabel, zlabel, xlimits, ylimits, zlimits):
