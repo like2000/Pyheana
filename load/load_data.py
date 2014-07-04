@@ -102,7 +102,8 @@ def read_slice_data(filename, format='ascii'):
     return A
 
 
-def read_particle_data(filename, format='ascii', init_step_to_read=0, n_steps_to_read=None, macroparticles_stride=None):
+def read_particle_data(filename, format='ascii', keys_to_read=None, macroparticles_stride=1,
+                       init_step_to_read=0, n_steps_to_read=None):
 
     A = {}
 
@@ -112,64 +113,31 @@ def read_particle_data(filename, format='ascii', init_step_to_read=0, n_steps_to
     elif format == 'h5':
         hf = h5py.File(filename, 'r')
 
+        if not keys_to_read:
+            keys_to_read = hf.keys()
+        
         # Check whether h5 file has structure with 'Step#..' keys. 
         if 'Step#0' in hf.keys():
-            # Preallocate memory.
             if not n_steps_to_read:
                 n_steps_to_read = len(hf.keys())
-            if not macroparticles_stride:
-                macroparticles_stride = 1
-
             n_macroparticles_tot     = len((hf[hf.keys()[0]])['x'])
             n_macroparticles_to_read = int(np.ceil(n_macroparticles_tot / macroparticles_stride))
 
-            x   = np.zeros((n_macroparticles_to_read, n_steps_to_read))
-            xp  = np.zeros((n_macroparticles_to_read, n_steps_to_read))
-            y   = np.zeros((n_macroparticles_to_read, n_steps_to_read))
-            yp  = np.zeros((n_macroparticles_to_read, n_steps_to_read))
-            z   = np.zeros((n_macroparticles_to_read, n_steps_to_read))
-            dp  = np.zeros((n_macroparticles_to_read, n_steps_to_read))
-            c   = np.zeros((n_macroparticles_to_read, n_steps_to_read))
-            idd = np.zeros((n_macroparticles_to_read, n_steps_to_read))
-            slice_index = np.zeros((n_macroparticles_to_read, n_steps_to_read))
+            data = np.zeros((len(keys_to_read), n_macroparticles_to_read, n_steps_to_read))
+            for stp in range(n_steps_to_read):
+                step = hf['Step#' + str(stp + init_step_to_read)]
 
-            # Read data from h5 file.
-            for i in range(0, n_steps_to_read):
-                step = hf['Step#' + str(i+init_step_to_read)]
-
-                x[:,i]   = step['x'][::macroparticles_stride]
-                xp[:,i]  = step['xp'][::macroparticles_stride]
-                y[:,i]   = step['y'][::macroparticles_stride]
-                yp[:,i]  = step['yp'][::macroparticles_stride]
-                z[:,i]   = step['z'][::macroparticles_stride]
-                dp[:,i]  = step['dp'][::macroparticles_stride]
-                c[:,i]   = step['c'][::macroparticles_stride]
-                idd[:,i] = step['id'][::macroparticles_stride]
-                slice_index[:, i] = step['slice_index'][::macroparticles_stride]
+                for i in range(len(keys_to_read)):
+                    data[i,:,stp] = step[keys_to_read[i]][::macroparticles_stride]
 
             # Build dictionary
-            A['x']  = x
-            A['xp'] = xp
-            A['y']  = y
-            A['yp'] = yp
-            A['z']  = z
-            A['dp'] = dp
-            A['c']  = c
-            A['id'] = idd
-            A['slice_index'] = slice_index
+            for i in range(len(keys_to_read)):
+                A[keys_to_read[i]] = data[i]
 
         # No 'Step#..' structure.
         else:
-            keys = hf.keys()
-            a = hf[keys[0]]
-            A['x']  = hf['x'][init_step_to_read:init_step_to_read+n_steps_to_read, ::macroparticles_stride]
-            A['xp'] = hf['xp'][init_step_to_read:init_step_to_read+n_steps_to_read, ::macroparticles_stride]
-            A['y']  = hf['y'][init_step_to_read:init_step_to_read+n_steps_to_read, ::macroparticles_stride]
-            A['yp'] = hf['yp'][init_step_to_read:init_step_to_read+n_steps_to_read, ::macroparticles_stride]
-            A['z']  = hf['z'][init_step_to_read:init_step_to_read+n_steps_to_read, ::macroparticles_stride]
-            A['dp'] = hf['dp'][init_step_to_read:init_step_to_read+n_steps_to_read, ::macroparticles_stride]
-            A['id'] = hf['id'][init_step_to_read:init_step_to_read+n_steps_to_read, ::macroparticles_stride]
-            A['c']  = hf['c'][init_step_to_read:init_step_to_read+n_steps_to_read, ::macroparticles_stride]
+            for i in range(len(keys_to_read)):
+                A[keys_to_read[i]] = hf[keys_to_read[i]][init_step_to_read:init_step_to_read+n_steps_to_read, ::macroparticles_stride]
 
     else:
         raise(ValueError('*** Unknown format: ', format))
