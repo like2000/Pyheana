@@ -4,50 +4,74 @@ import scipy.io as sio
 from Pyheana.load.load_data import *
 
 
-# file_list = get_file_list(path)
 
+class ThresholdPlots:
 
-# A, file_list = read_bunch_data(file_list[::1], format='ascii'); A = A[:,10000:,:]
-# t, x, xp, y, yp, dz, dp = A[:7,:,:]
-# sigma_x, sigma_y, sigma_dz, sigma_dp, epsn_x, epsn_y, epsn_z = A[7:14,:,:]
+    def __init__(self, rawdata, scan_values):
 
-# T = plt.arange(len(t)) + 1 + 10000
-# varray = plt.array(get_value_from_cfg(file_list, "Number_of_particles_per_bunch:"))
+        self.scan_values = scan_values
+        self._prepare_input_signals(rawdata)
+        
+        
+    def create_plot(self, plane='horizontal', xlabel='turns', ylabel='intensity [particles]', zlabel='normalized emittance',
+                    xlimits=((0.,8192)), ylimits=((0.,7.1e11)), zlimits=((0., 10.))):
+    
+        self._create_axes(xlabel, ylabel, zlabel, xlimits, ylimits, zlimits)
+        
+        cmap = plt.cm.get_cmap('jet', 2)
+        self.ax11.patch.set_facecolor(cmap(range(2))[-1])
+        cmap = plt.cm.get_cmap('jet')
 
+        x, y = plt.meshgrid(self.turns[:,0], self.scan_values)
+        if plane == 'horizontal':
+            z = self.epsn_abs_x
+        elif plane == 'vertical':
+            z = self.epsn_abs_y
+        else:
+            print 'Invalid plane argument.'
 
+        threshold_plot = self.ax11.contourf(x, y, z.T, levels=plt.linspace(zlimits[0], zlimits[1], 201),
+                                            vmin=zlimits[0], vmax=zlimits[1], cmap=cmap)
+        cb = plt.colorbar(threshold_plot, self.ax13, orientation='vertical')
+        cb.set_label(zlabel)
 
-def plot_thresholds(x, y, z, scan_parameter='intensity'):
+        plt.tight_layout()
 
-    vmax = 10
+        
+    def _prepare_input_signals(self, rawdata):
 
-    # fig, (ax) = plt.subplots(1, figsize=(11, 8))
-    # n_turns, n_files = x.shape
-    # cmap = plt.get_cmap('jet')
-    # c = [cmap(i) for i in plt.linspace(0, 1, n_files)]
-    # ax.set_color_cycle(c)
+        # x axis
+        t = rawdata[0,:,:]
+        turns = plt.ones(t.shape).T * plt.arange(len(t))
+        turns = turns.T
+        self.turns = turns
+        
+        # z axis
+        self.epsn_abs = {}
+        self.epsn_abs_x = plt.absolute(rawdata[11,:,:])
+        self.epsn_abs_y = plt.absolute(rawdata[12,:,:])
+        
+        # self.epsn_abs.update( {"horizontal", epsn_abs_x} )
+        # self.epsn_abs.update( {"vertical",   epsn_abs_y} )
+            
 
-    # k = plt.amax(y, axis=0).argsort()[::-1]
-    # x, y = x[:,k], y[:,k]
-    # ax.plot(y)
-    # ax.set_ylim(-10, 10)
+    def _create_axes(self, xlabel, ylabel, zlabel, xlimits, ylimits, zlimits):
 
-    # # Mask array
-    # a = np.ma.masked_less_equal(A, 0)
-    # a = np.ma.masked_greater_equal(a, 10000)
+        # Plot environment
+        ratio = 20
+        fig = plt.figure(figsize=(22, 12))
+        
+        gs = matplotlib.gridspec.GridSpec(1, ratio)
+        ax11 = plt.subplot(gs[0,:ratio-1])
+        ax13 = plt.subplot(gs[:,ratio-1])
 
-    # Contour plot
-    fig, (ax) = plt.subplots(1, figsize=(11, 8))
-    cmap = plt.cm.get_cmap('jet', 2)
-    ax.patch.set_facecolor(cmap(range(2))[-1])
-    cmap = plt.cm.get_cmap('jet')
+        # Prepare plot axes
+        ax11.grid(color='w')
+        ax11.set_axis_bgcolor('0.35')
+        ax11.set_xlabel(xlabel);
+        ax11.set_xlim(xlimits)
+        ax11.set_ylabel(ylabel)
+        ax11.set_ylim(ylimits)
 
-    xx, yy = plt.meshgrid(x[:,0], z)
-    ct = ax.contourf(xx, yy, y.T, levels=plt.linspace(0, vmax, 201), vmin=0, vmax=vmax, cmap=cmap)
-    ax.set_xlabel('Turns')
-    ax.set_ylabel(scan_parameter)
-    # ax.set_ylim(0, 6.2e11)
-    cb = plt.colorbar(ct)
-    # cb.set_label('Horizontal norm. emittance [$\mu$m]')
-    cb.set_label('Vertical norm. emittance [$\mu$m]')
-    plt.tight_layout()
-
+        self.ax11 = ax11
+        self.ax13 = ax13
