@@ -103,7 +103,7 @@ def read_slice_data(filename, format='ascii'):
 
 
 def read_particle_data(filename, format='ascii', keys_to_read=None, macroparticles_stride=1,
-                       init_step_to_read=0, n_steps_to_read=None):
+                       init_turn_to_read=0, n_turns_to_read=None):
     A = {}
 
     if format == ('ascii' or 'hdf5'):
@@ -114,19 +114,20 @@ def read_particle_data(filename, format='ascii', keys_to_read=None, macroparticl
         if not keys_to_read:
             keys_to_read = hf.keys()
 
+        print ''
         print "--> Reading keys", keys_to_read
-        print "from file", filename
+        print "    from file", filename
 
         # Check whether h5 file has structure with 'Step#..' keys. 
         if 'Step#0' in hf.keys():
-            if not n_steps_to_read:
-                n_steps_to_read = len(hf.keys())
+            if not n_turns_to_read:
+                n_turns_to_read = len(hf.keys())
             n_macroparticles_tot     = len((hf[hf.keys()[0]])['x'])
             n_macroparticles_to_read = int(np.ceil(n_macroparticles_tot / macroparticles_stride))
 
-            data = np.zeros((len(keys_to_read), n_macroparticles_to_read, n_steps_to_read))
-            for stp in range(n_steps_to_read):
-                step = hf['Step#' + str(stp + init_step_to_read)]
+            data = np.zeros((len(keys_to_read), n_macroparticles_to_read, n_turns_to_read))
+            for stp in range(n_turns_to_read):
+                step = hf['Step#' + str(stp + init_turn_to_read)]
 
                 for i in range(len(keys_to_read)):
                     data[i,:,stp] = step[keys_to_read[i]][::macroparticles_stride]
@@ -138,7 +139,7 @@ def read_particle_data(filename, format='ascii', keys_to_read=None, macroparticl
         # No 'Step#..' structure.
         else:
             for i in range(len(keys_to_read)):
-                A[keys_to_read[i]] = hf[keys_to_read[i]][init_step_to_read:init_step_to_read+n_steps_to_read, ::macroparticles_stride]
+                A[keys_to_read[i]] = hf[keys_to_read[i]][init_turn_to_read:init_turn_to_read+n_turns_to_read, ::macroparticles_stride]
 
     else:
         raise(ValueError('*** Unknown format: ', format))
