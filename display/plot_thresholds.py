@@ -1,11 +1,17 @@
+'''
+@class ThresholdPlots
+@author Kevin Li, Michael Schenk
+@date 07.07.14 (last update)
+@Class for creation of threshold plots from bunch data.
+@copyright CERN
+'''
 import matplotlib
 import pylab as plt
 import scipy.io as sio
 from Pyheana.load.load_data import *
 
 
-
-class ThresholdPlots:
+class ThresholdPlots(object):
 
     def __init__(self, rawdata, scan_values):
 
@@ -13,9 +19,13 @@ class ThresholdPlots:
         self._prepare_input_signals(rawdata)
         
         
-    def create_plot(self, plane='horizontal', xlabel='turns', ylabel='intensity [particles]', zlabel='normalized emittance',
-                    xlimits=((0.,8192)), ylimits=((0.,7.1e11)), zlimits=((0., 10.))):
-    
+    def prepare_plot(self, plane='horizontal', xlabel='turns', ylabel='intensity [particles]', zlabel='normalized emittance',
+                     xlimits=((0.,8192)), ylimits=((0.,7.1e11)), zlimits=((0., 10.))):
+
+        if not plane in ('horizontal', 'vertical'):
+            print 'Invalid plane argument. Must be horizontal or vertical.'
+            exit(-1)
+        
         self._create_axes(xlabel, ylabel, zlabel, xlimits, ylimits, zlimits)
         
         cmap = plt.cm.get_cmap('jet', 2)
