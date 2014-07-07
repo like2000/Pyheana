@@ -87,7 +87,7 @@ def read_bunch_data(file_list, format='ascii'):
 
     A = plt.array(A)
     A = plt.rollaxis(A, 0, 3)
-    [n_cols, n_turns, n_files] = A.shape
+    # [n_cols, n_turns, n_files] = A.shape
 
     return A, file_list
 
@@ -104,10 +104,8 @@ def read_slice_data(filename, format='ascii'):
 
 def read_particle_data(filename, format='ascii', keys_to_read=None, macroparticles_stride=1,
                        init_step_to_read=0, n_steps_to_read=None):
-
     A = {}
 
-    print "--> Reading data from file", filename
     if format == ('ascii' or 'hdf5'):
         A, filename = read_big_data(filename, type='prb', format=format)
     elif format == 'h5':
@@ -115,7 +113,10 @@ def read_particle_data(filename, format='ascii', keys_to_read=None, macroparticl
 
         if not keys_to_read:
             keys_to_read = hf.keys()
-        
+
+        print "--> Reading keys", keys_to_read
+        print "from file", filename
+
         # Check whether h5 file has structure with 'Step#..' keys. 
         if 'Step#0' in hf.keys():
             if not n_steps_to_read:
