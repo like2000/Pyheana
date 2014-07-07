@@ -5,3 +5,4 @@ from plot_thresholds import *
 from plot_tuneshift import *
 from plot_risetimes import *
 from plot_spectrum import *
+from plot_footprints import *
