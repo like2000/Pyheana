@@ -78,12 +78,16 @@ def read_bunch_data(file_list, format='ascii'):
             except IOError:
                 print '*** WARNING: no file ', d
                 R.append((i, file_list[i]))
+            except KeyError:
+                print '*** WARNING: damaged file ', d
+                R.append((i, file_list[i]))
     else:
         raise(ValueError('*** Unknown format: ', format))
 
     for r in R:
         file_list.remove(r[1])
-        A = plt.delete(A, r[0], axis=0)
+    delete_from_data_array = [r[0] for r in R]
+    A = plt.delete(A, delete_from_data_array, axis=0)
 
     A = plt.array(A)
     A = plt.rollaxis(A, 0, 3)
