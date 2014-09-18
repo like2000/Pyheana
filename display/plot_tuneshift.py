@@ -15,13 +15,14 @@ def calculate_tuneshifts(rawdata, beta_x, beta_y, Q_x, Q_y, Q_s, analyzer='fft',
     # Prepare signals and perform spectral analysis.
     sx, sy = _prepare_input_signals(rawdata, beta_x, beta_y)
     if analyzer == 'fft':
-        spectra = _calculate_spectra_fft(sx, sy, Q_x, Q_y, Q_s, n_lines=1000)
+        spectra = _calculate_spectra_fft(sx, sy, Q_x, Q_y, Q_s, n_lines=512)
     elif analyzer == 'sussix':
         spectra = _calculate_spectra_sussix(sx, sy, Q_x, Q_y, Q_s, n_lines=600)
     else:
         print 'Invalid analyzer argument.'
 
     return spectra
+
 
 def calculate_1d_sussix_spectrum(turn, window_width, x, xp, qx):
     macroparticlenumber = len(x)
@@ -42,7 +43,8 @@ def calculate_1d_sussix_spectrum(turn, window_width, x, xp, qx):
 
     return tunes
 
-def plot_tuneshifts_2(ax, spectrum, scan_values):
+
+def plot_tuneshifts_2(ax, spectrum, scan_values, Qs=1, fitrange=None, fittype=None):
 
     (spectral_lines, spectral_intensity) = spectrum
 
@@ -61,7 +63,46 @@ def plot_tuneshifts_2(ax, spectrum, scan_values):
     cb = plt.colorbar(tuneshift_plot, ax[1], orientation='vertical')
     cb.set_label('Power [normalised]')
 
-    # plt.tight_layout()
+    if fitrange:
+        if not fittype or fittype=='full':
+            x, y, z, p = fit_modes_full(spectral_lines, spectral_intensity, scan_values, fitrange)
+        elif fittype=="0":
+            x, y, z, p = fit_modes_0(spectral_lines, spectral_intensity, scan_values, fitrange)
+        else:
+            raise ValueError("Wrong argument "+fittype+"! Use \"0\" or \"full\"")
+
+        ax[0].plot(x, y, 'o', ms=8, mfc='none', mew=2, mec='limegreen')
+        ax[0].plot(scan_values, z, '-', lw=2, color='limegreen')
+
+        ax[0].text(0.95, 0.95, '$\Delta Q \sim $ {:1.2e}'.format(p[0]*1e11*Qs[0]), fontsize=36, color='w', horizontalalignment='right', verticalalignment='top', transform=ax[0].transAxes)
+
+
+def fit_modes_0(o, a, v, ixrange):
+    ix = [plt.where(plt.logical_and(-1<o, o<1)[:,i]) for i in range(o.shape[1])]
+    o = [o[ix[i],i][0] for i in range(o.shape[1])]
+    a = [a[ix[i],i][0] for i in range(a.shape[1])]
+    ax = [plt.argmax(a[i][:]) for i in range(len(a))]
+    o = plt.array([o[i][ax[i]] for i in range(len(o))])
+    a = plt.array([a[i][ax[i]] for i in range(len(a))])
+
+    x, y = v[list(ixrange)], o[list(ixrange)]
+    p = plt.polyfit(x, y, 1)
+    z = v*p[0] + p[1]
+
+    return x, y, z, p
+
+
+def fit_modes_full(o, a, v, ixrange):
+    ax = [plt.argmax(a[:,i]) for i in range(a.shape[1])]
+    o = plt.array([o[ax[i],i] for i in range(o.shape[1])])
+    a = plt.array([a[ax[i],i] for i in range(a.shape[1])])
+
+    x, y = v[ixrange], o[ixrange]
+    p = plt.polyfit(x, y, 1)
+    z = v*p[0] + p[1]
+
+    return x, y, z, p
+
 
 def plot_tuneshifts(spectrum, scan_values, xlabel='intensity [particles]', ylabel='mode number',
                     xlimits=((0.,7.1e11)), ylimits=((-4,2))):
@@ -85,6 +126,7 @@ def plot_tuneshifts(spectrum, scan_values, xlabel='intensity [particles]', ylabe
     cb.set_label('Power [normalised]')
 
     plt.tight_layout()
+
 
 def _prepare_input_signals(rawdata, beta_x, beta_y):
 
